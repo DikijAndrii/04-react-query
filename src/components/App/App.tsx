@@ -1,50 +1,72 @@
 import { useState } from "react";
 import type { Movie } from "../../types/movie";
-import fetchMovies from "../../services/movieService";
+import fetchMovies, {
+  type FetchMoviesProps,
+} from "../../services/movieService";
 import toast, { Toaster } from "react-hot-toast";
 import SearchBar from "../SearchBar/SearchBar";
 import Loader from "../Loader/Loader";
 import ErrorMessage from "../ErrorMessage/ErrorMessage";
 import MovieGrid from "../MovieGrid/MovieGrid";
 import MovieModal from "../MovieModal/MovieModal";
+import { useQuery } from "@tanstack/react-query";
+import ReactPaginate from "react-paginate";
+import css from "./App.module.css";
 
 function App() {
-  const [movies, setMovies] = useState<Movie[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(false);
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
 
-  async function handleSearch(query: string) {
-    setMovies([]);
-    setError(false);
-    setLoading(true);
+  const { data, isLoading, isError } = useQuery<FetchMoviesProps>({
+    queryKey: ["movies", query, page],
+    queryFn: () => fetchMovies(query, page),
+    enabled: !!query, // запит виконується тільки якщо є query
+    placeholderData: (previous?: FetchMoviesProps) => previous, // залишає старі дані під час завантаження нових сторінок
+  });
 
-    try {
-      const res = await fetchMovies(query);
-      if (res.length === 0) {
-        toast("No movies found for your request.");
-      }
-      setMovies(res);
-    } catch {
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
+  function handleSearch(newQuery: string) {
+    setQuery(newQuery);
+    setPage(1); // новий пошук завжди починається з 1 сторінки
   }
+
   return (
     <>
       <SearchBar onSubmit={handleSearch} />
-      {loading && <Loader />}
-      {error && <ErrorMessage />}
-      {!loading && !error && (
-        <MovieGrid movies={movies} onSelect={setSelectedMovie} />
+
+      {isLoading && <Loader />}
+      {isError && <ErrorMessage />}
+
+      {data &&
+        data.results.length === 0 &&
+        toast("No movies found for your request.")}
+
+      {!isLoading && !isError && data && (
+        <>
+          {data.total_pages > 1 && (
+            <ReactPaginate
+              pageCount={data.total_pages}
+              pageRangeDisplayed={5}
+              marginPagesDisplayed={1}
+              onPageChange={({ selected }) => setPage(selected + 1)}
+              forcePage={page - 1}
+              containerClassName={css.pagination}
+              activeClassName={css.active}
+              nextLabel="→"
+              previousLabel="←"
+            />
+          )}
+          <MovieGrid movies={data.results} onSelect={setSelectedMovie} />
+        </>
       )}
+
       {selectedMovie && (
         <MovieModal
           movie={selectedMovie}
           onClose={() => setSelectedMovie(null)}
         />
       )}
+
       <Toaster position="top-right" />
     </>
   );
