@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Movie } from "../../types/movie";
 import fetchMovies, {
   type FetchMoviesProps,
@@ -10,6 +10,7 @@ import ErrorMessage from "../ErrorMessage/ErrorMessage";
 import MovieGrid from "../MovieGrid/MovieGrid";
 import MovieModal from "../MovieModal/MovieModal";
 import { useQuery } from "@tanstack/react-query";
+
 import ReactPaginate from "react-paginate";
 import css from "./App.module.css";
 
@@ -25,6 +26,12 @@ function App() {
     placeholderData: (previous?: FetchMoviesProps) => previous, // залишає старі дані під час завантаження нових сторінок
   });
 
+  useEffect(() => {
+    if (data && data.results.length === 0) {
+      toast.error("No movies found");
+    }
+  }, [data]);
+
   function handleSearch(newQuery: string) {
     setQuery(newQuery);
     setPage(1); // новий пошук завжди починається з 1 сторінки
@@ -36,10 +43,6 @@ function App() {
 
       {isLoading && <Loader />}
       {isError && <ErrorMessage />}
-
-      {data &&
-        data.results.length === 0 &&
-        toast("No movies found for your request.")}
 
       {!isLoading && !isError && data && (
         <>
