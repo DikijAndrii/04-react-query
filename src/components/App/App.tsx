@@ -19,7 +19,7 @@ function App() {
   const [page, setPage] = useState(1);
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
 
-  const { data, isLoading, isError } = useQuery<FetchMoviesProps>({
+  const { data, isLoading, isError, isSuccess } = useQuery<FetchMoviesProps>({
     queryKey: ["movies", query, page],
     queryFn: () => fetchMovies(query, page),
     enabled: !!query, // запит виконується тільки якщо є query
@@ -27,10 +27,10 @@ function App() {
   });
 
   useEffect(() => {
-    if (data && data.results.length === 0) {
+    if (isSuccess && data.results.length === 0) {
       toast.error("No movies found");
     }
-  }, [data]);
+  }, [data, isSuccess]);
 
   function handleSearch(newQuery: string) {
     setQuery(newQuery);
@@ -46,7 +46,7 @@ function App() {
 
       {!isLoading && !isError && data && (
         <>
-          {data.total_pages > 1 && (
+          {isSuccess && data.total_pages > 1 && (
             <ReactPaginate
               pageCount={data.total_pages}
               pageRangeDisplayed={5}
